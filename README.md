@@ -2,7 +2,6 @@
 
 ![Preview](.github/preview.jpeg)
 
-Agrega subtitulos estilo comic a tus videos de forma automatica.
-Tiras tus videos en una carpeta, corres un comando, y salen con subtitulos.
+> Auto caption your videos using a drag n drop editor, Capy helps you creating engaging content for your social media.
 
 ![Preview](.github/preview2.jpeg)
