@@ -183,8 +183,10 @@ export function VideoDropzone() {
   };
 
   return (
-    <div className="flex flex-1 items-center justify-center p-8">
+    <div className="flex flex-1 overflow-y-auto items-center justify-center p-8">
       <div className="flex w-full max-w-lg flex-col items-center gap-6">
+        {/* App logo */}
+        <img src="/capy.png" alt="Capy" className="min-w-[420px]" />
         {/* Dropzone */}
         <div
           className={`flex w-full flex-col items-center gap-6 rounded-xl border-2 border-dashed p-12 transition-colors ${

@@ -1,20 +1,17 @@
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { useProjectStore } from "../../stores/useProjectStore";
-import { computePageGroups, computeStaticPageGroups } from "../../lib/pageGroups";
+import { usePageRanges } from "../../hooks/usePageRanges";
 import { toast } from "sonner";
 
 export function usePageActions() {
-  const { captions, settings, updateCaption, deleteCaption } = useProjectStore();
+  const captions = useProjectStore((s) => s.captions);
+  const settings = useProjectStore((s) => s.settings);
+  const updateCaption = useProjectStore((s) => s.updateCaption);
+  const deleteCaption = useProjectStore((s) => s.deleteCaption);
   const pageCombineMs = settings.captionConfig.pageCombineMs;
   const captionMode = settings.captionMode;
 
-  const { pageRanges } = useMemo(
-    () =>
-      captionMode === "static"
-        ? computeStaticPageGroups(captions)
-        : computePageGroups(captions, pageCombineMs),
-    [captions, pageCombineMs, captionMode],
-  );
+  const { pageRanges } = usePageRanges();
 
   /**
    * Break a page into two by inserting a gap > pageCombineMs

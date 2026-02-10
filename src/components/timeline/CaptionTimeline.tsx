@@ -20,15 +20,13 @@ import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 
 function TimelineInner() {
-  const {
-    captions,
-    currentTimeMs,
-    updateCaption,
-    deleteCaption,
-    addCaption,
-  } = useProjectStore();
+  const captions = useProjectStore((s) => s.captions);
+  const currentTimeMs = useProjectStore((s) => s.currentTimeMs);
+  const updateCaption = useProjectStore((s) => s.updateCaption);
+  const deleteCaption = useProjectStore((s) => s.deleteCaption);
+  const addCaption = useProjectStore((s) => s.addCaption);
 
-  const { isPlaying } = usePlaybackStore();
+  const isPlaying = usePlaybackStore((s) => s.isPlaying);
 
   const {
     selectedIndices,

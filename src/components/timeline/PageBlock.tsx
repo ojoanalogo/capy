@@ -1,4 +1,4 @@
-import { useCallback, useRef, type MouseEvent as ReactMouseEvent } from "react";
+import { memo, useCallback, useMemo, useRef, type MouseEvent as ReactMouseEvent } from "react";
 import { useProjectStore } from "../../stores/useProjectStore";
 import { useTimeline } from "./TimelineContext";
 import type { PageRange } from "../../lib/pageGroups";
@@ -53,7 +53,7 @@ interface PageBlockProps {
 
 /* ── Component ──────────────────────────────────────────────── */
 
-export function PageBlock({
+export const PageBlock = memo(function PageBlock({
   page,
   totalPages,
   captionMode,
@@ -66,7 +66,8 @@ export function PageBlock({
   onMergeWithNext,
   onDeletePage,
 }: PageBlockProps) {
-  const { captions, currentTimeMs } = useProjectStore();
+  const captions = useProjectStore((s) => s.captions);
+  const currentTimeMs = useProjectStore((s) => s.currentTimeMs);
   const {
     pxPerMs,
     selectedIndices,
@@ -94,10 +95,14 @@ export function PageBlock({
   const isSelectedPage = selectedPageIndex === page.pageIndex;
   const captionCount = page.lastCaptionIdx - page.firstCaptionIdx + 1;
 
-  const pageText = captions
-    .slice(page.firstCaptionIdx, page.lastCaptionIdx + 1)
-    .map((c) => c.text.trim())
-    .join(" ");
+  const pageText = useMemo(
+    () =>
+      captions
+        .slice(page.firstCaptionIdx, page.lastCaptionIdx + 1)
+        .map((c) => c.text.trim())
+        .join(" "),
+    [captions, page.firstCaptionIdx, page.lastCaptionIdx],
+  );
 
   // ── Toolbar / tooltip targets ──────────────────────────────
   const toolbarIdx = (() => {
@@ -618,4 +623,4 @@ export function PageBlock({
       </ContextMenu>
     </div>
   );
-}
+});

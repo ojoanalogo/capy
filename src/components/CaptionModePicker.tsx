@@ -81,11 +81,11 @@ export function CaptionModePicker() {
 
   return (
     <div
-      className={`flex-1 flex items-center justify-center transition-opacity duration-300 ${
+      className={`flex-1 overflow-y-auto flex items-center justify-center transition-opacity duration-300 ${
         isTransitioning ? "opacity-0" : "opacity-100"
       }`}
     >
-      <div className="w-full max-w-lg px-6 space-y-6">
+      <div className="w-full max-w-lg px-6 py-6 space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
           <h2 className="text-lg font-semibold text-foreground">

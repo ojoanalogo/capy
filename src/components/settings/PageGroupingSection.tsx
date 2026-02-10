@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Rows3 } from "lucide-react";
 import { useProjectStore } from "../../stores/useProjectStore";
 import { PAGE_GROUPING_PRESETS } from "../../lib/presets";
-import { computePageGroups } from "../../lib/pageGroups";
+import { usePageRanges } from "../../hooks/usePageRanges";
 import { Slider } from "../ui/slider";
 import { Group, Select } from "./primitives";
 import { SectionHeader } from "./SectionHeader";
@@ -22,12 +22,8 @@ export function PageGroupingSection() {
 
   const [showConfirm, setShowConfirm] = useState(false);
 
-  const pageCount = useMemo(() => {
-    if (captions.length === 0) return 0;
-    if (captionMode === "static") return captions.length;
-    const { pageRanges } = computePageGroups(captions, config.pageCombineMs);
-    return pageRanges.length;
-  }, [captions, config.pageCombineMs, captionMode]);
+  const { pageRanges } = usePageRanges();
+  const pageCount = pageRanges.length;
 
   const activePreset = PAGE_GROUPING_PRESETS.find(
     (p) => p.ms === config.pageCombineMs,

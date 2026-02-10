@@ -14,9 +14,11 @@ import {
   SNAP_THRESHOLD_PX,
   type DragState,
   type TimelineContextValue,
+  type PlayheadContextValue,
 } from "./timeline-types";
 
 const TimelineContext = createContext<TimelineContextValue | null>(null);
+const PlayheadContext = createContext<PlayheadContextValue | null>(null);
 
 export function useTimeline(): TimelineContextValue {
   const ctx = useContext(TimelineContext);
@@ -24,9 +26,18 @@ export function useTimeline(): TimelineContextValue {
   return ctx;
 }
 
+/** Volatile per-frame values (playhead position, track width, snap threshold) */
+export function usePlayhead(): PlayheadContextValue {
+  const ctx = useContext(PlayheadContext);
+  if (!ctx) throw new Error("usePlayhead must be used within TimelineProvider");
+  return ctx;
+}
+
 export function TimelineProvider({ children }: { children: ReactNode }) {
-  const { captions, currentTimeMs, videoDurationMs, trimOutMs } =
-    useProjectStore();
+  const captions = useProjectStore((s) => s.captions);
+  const currentTimeMs = useProjectStore((s) => s.currentTimeMs);
+  const videoDurationMs = useProjectStore((s) => s.videoDurationMs);
+  const trimOutMs = useProjectStore((s) => s.trimOutMs);
 
   // Refs
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -71,10 +82,6 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
     return targets;
   }, [captions]);
 
-  const snapThresholdMs = SNAP_THRESHOLD_PX / pxPerMs;
-  const trackWidth = totalMs * pxPerMs;
-  const playheadLeft = currentTimeMs * pxPerMs;
-
   // Selection with shift/cmd
   const selectCaption = useCallback(
     (index: number, e?: ReactMouseEvent) => {
@@ -98,6 +105,7 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
     [selectedIndices],
   );
 
+  // ── Stable context (only changes on user interaction) ─────────
   const value = useMemo<TimelineContextValue>(
     () => ({
       pxPerMs,
@@ -122,9 +130,6 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
       scrollRef,
       trackRef,
       totalMs,
-      trackWidth,
-      playheadLeft,
-      snapThresholdMs,
       snapTargets,
     }),
     [
@@ -139,16 +144,25 @@ export function TimelineProvider({ children }: { children: ReactNode }) {
       snapLineMs,
       hoveredIndex,
       totalMs,
-      trackWidth,
-      playheadLeft,
-      snapThresholdMs,
       snapTargets,
     ],
   );
 
+  // ── Volatile context (changes every frame during playback) ────
+  const playheadValue = useMemo<PlayheadContextValue>(
+    () => ({
+      playheadLeft: currentTimeMs * pxPerMs,
+      trackWidth: totalMs * pxPerMs,
+      snapThresholdMs: SNAP_THRESHOLD_PX / pxPerMs,
+    }),
+    [currentTimeMs, pxPerMs, totalMs],
+  );
+
   return (
     <TimelineContext.Provider value={value}>
-      {children}
+      <PlayheadContext.Provider value={playheadValue}>
+        {children}
+      </PlayheadContext.Provider>
     </TimelineContext.Provider>
   );
 }

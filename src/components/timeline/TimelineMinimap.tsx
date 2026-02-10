@@ -1,8 +1,42 @@
 import { useState, useEffect, useCallback, useMemo, type MouseEvent as ReactMouseEvent } from "react";
 import { useProjectStore } from "../../stores/useProjectStore";
-import { useTimeline } from "./TimelineContext";
+import { useTimeline, usePlayhead } from "./TimelineContext";
 import type { PageRange } from "../../lib/pageGroups";
 import { MINIMAP_HEIGHT } from "./timeline-types";
+
+/* ── Merge threshold ─────────────────────────────────────────── */
+const MAX_MINIMAP_BLOCKS = 100;
+
+interface MergedBlock {
+  key: number;
+  startMs: number;
+  endMs: number;
+  color: string;
+}
+
+/** Collapse page ranges into at most MAX_MINIMAP_BLOCKS visual blocks */
+function mergeMinimap(pageRanges: PageRange[]): MergedBlock[] {
+  if (pageRanges.length <= MAX_MINIMAP_BLOCKS) {
+    return pageRanges.map((pr) => ({
+      key: pr.pageIndex,
+      startMs: pr.startMs,
+      endMs: pr.endMs,
+      color: pr.color,
+    }));
+  }
+  const factor = Math.ceil(pageRanges.length / MAX_MINIMAP_BLOCKS);
+  const blocks: MergedBlock[] = [];
+  for (let i = 0; i < pageRanges.length; i += factor) {
+    const slice = pageRanges.slice(i, i + factor);
+    blocks.push({
+      key: i,
+      startMs: slice[0]!.startMs,
+      endMs: slice[slice.length - 1]!.endMs,
+      color: slice[0]!.color,
+    });
+  }
+  return blocks;
+}
 
 interface TimelineMinimapProps {
   pageRanges: PageRange[];
@@ -10,7 +44,8 @@ interface TimelineMinimapProps {
 
 export function TimelineMinimap({ pageRanges }: TimelineMinimapProps) {
   const { currentTimeMs } = useProjectStore();
-  const { totalMs, trackWidth, scrollRef, setSelectedPageIndex, setIsAutoFollowing } = useTimeline();
+  const { totalMs, scrollRef, setSelectedPageIndex, setIsAutoFollowing } = useTimeline();
+  const { trackWidth } = usePlayhead();
 
   const minimapScale = useMemo(() => {
     const container = scrollRef.current;
@@ -63,22 +98,24 @@ export function TimelineMinimap({ pageRanges }: TimelineMinimapProps) {
     [trackWidth, totalMs, scrollRef, pageRanges, setSelectedPageIndex, setIsAutoFollowing],
   );
 
+  const mergedBlocks = useMemo(() => mergeMinimap(pageRanges), [pageRanges]);
+
   return (
     <div
       className="relative bg-muted/30 cursor-pointer border-b border-border/30"
       style={{ height: MINIMAP_HEIGHT }}
       onClick={handleMinimapClick}
     >
-      {/* Page-colored blocks */}
-      {pageRanges.map((pr) => {
-        const left = (pr.startMs / totalMs) * 100;
+      {/* Page-colored blocks (merged when >100 pages) */}
+      {mergedBlocks.map((block) => {
+        const left = (block.startMs / totalMs) * 100;
         const width = Math.max(
           0.5,
-          ((pr.endMs - pr.startMs) / totalMs) * 100,
+          ((block.endMs - block.startMs) / totalMs) * 100,
         );
         return (
           <div
-            key={pr.pageIndex}
+            key={block.key}
             className="absolute"
             style={{
               left: `${left}%`,
@@ -86,7 +123,7 @@ export function TimelineMinimap({ pageRanges }: TimelineMinimapProps) {
               top: 4,
               bottom: 4,
               borderRadius: 1,
-              backgroundColor: pr.color + "40",
+              backgroundColor: block.color + "40",
             }}
           />
         );

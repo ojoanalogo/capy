@@ -24,6 +24,7 @@ export type DragState =
   | { type: "trim-in" }
   | { type: "trim-out" };
 
+/** Stable context – only changes on user interaction (zoom, select, edit, drag) */
 export interface TimelineContextValue {
   // Zoom
   pxPerMs: number;
@@ -60,12 +61,16 @@ export interface TimelineContextValue {
   scrollRef: RefObject<HTMLDivElement | null>;
   trackRef: RefObject<HTMLDivElement | null>;
 
-  // Derived
+  // Derived (stable – only change when captions/zoom change)
   totalMs: number;
-  trackWidth: number;
-  playheadLeft: number;
-  snapThresholdMs: number;
   snapTargets: number[];
+}
+
+/** Volatile context – changes every frame during playback */
+export interface PlayheadContextValue {
+  playheadLeft: number;
+  trackWidth: number;
+  snapThresholdMs: number;
 }
 
 /* ── Helpers ───────────────────────────────────────────────────── */

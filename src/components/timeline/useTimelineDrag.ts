@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useProjectStore } from "../../stores/useProjectStore";
-import { useTimeline } from "./TimelineContext";
+import { useTimeline, usePlayhead } from "./TimelineContext";
 import { findSnap, clampCaption, SNAP_THRESHOLD_PX } from "./timeline-types";
 
 /**
@@ -21,8 +21,8 @@ export function useTimelineDrag() {
     scrollRef,
     trackRef,
     snapTargets,
-    snapThresholdMs,
   } = useTimeline();
+  const { snapThresholdMs } = usePlayhead();
 
   // Keep mutable values in refs to avoid tearing down listeners mid-drag
   const pxPerMsRef = useRef(pxPerMs);

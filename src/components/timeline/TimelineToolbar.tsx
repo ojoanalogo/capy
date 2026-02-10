@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect, useMemo } from "react";
+import { useRef, useState, useCallback, useEffect, useMemo, memo } from "react";
 import { useProjectStore } from "../../stores/useProjectStore";
 import { usePlaybackStore } from "../../stores/usePlaybackStore";
 import { useTimeline } from "./TimelineContext";
@@ -44,15 +44,13 @@ export function TimelineToolbar({
   selectedPageIndex,
   pageRanges,
 }: TimelineToolbarProps) {
-  const {
-    currentTimeMs,
-    videoDurationMs,
-    captions,
-    trimInMs,
-    trimOutMs,
-    setTrimIn,
-    setTrimOut,
-  } = useProjectStore();
+  const currentTimeMs = useProjectStore((s) => s.currentTimeMs);
+  const videoDurationMs = useProjectStore((s) => s.videoDurationMs);
+  const captions = useProjectStore((s) => s.captions);
+  const trimInMs = useProjectStore((s) => s.trimInMs);
+  const trimOutMs = useProjectStore((s) => s.trimOutMs);
+  const setTrimIn = useProjectStore((s) => s.setTrimIn);
+  const setTrimOut = useProjectStore((s) => s.setTrimOut);
   const { isPlaying, isMuted, volume, isLooping, setIsLooping } =
     usePlaybackStore();
   const { pxPerMs, setPxPerMs, selectedIndices, totalMs, scrollRef } =
@@ -60,9 +58,35 @@ export function TimelineToolbar({
 
   const durationS = videoDurationMs / 1000;
 
-  const playheadOnCaption = captions.some(
-    (c) => currentTimeMs >= c.startMs && currentTimeMs <= c.endMs,
-  );
+  // O(log n) check instead of O(n) scan on every frame
+  const playheadOnCaption = useMemo(() => {
+    if (captions.length === 0) return false;
+    // Binary search: find the last caption that starts <= currentTimeMs
+    let lo = 0, hi = captions.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (captions[mid]!.startMs <= currentTimeMs) lo = mid;
+      else hi = mid - 1;
+    }
+    const cap = captions[lo]!;
+    return currentTimeMs >= cap.startMs && currentTimeMs <= cap.endMs;
+  }, [captions, currentTimeMs]);
+
+  // Merge caption dots when there are too many (cap at ~200 divs)
+  const MAX_SEEK_DOTS = 200;
+  const seekDots = useMemo(() => {
+    if (videoDurationMs === 0) return [];
+    if (captions.length <= MAX_SEEK_DOTS) {
+      return captions.map((c) => (c.startMs / videoDurationMs) * 100);
+    }
+    // Merge: sample evenly
+    const step = Math.ceil(captions.length / MAX_SEEK_DOTS);
+    const dots: number[] = [];
+    for (let i = 0; i < captions.length; i += step) {
+      dots.push((captions[i]!.startMs / videoDurationMs) * 100);
+    }
+    return dots;
+  }, [captions, videoDurationMs]);
 
   // ── Zoom ──────────────────────────────────────────────────────
   const zoomIn = useCallback(
@@ -172,13 +196,13 @@ export function TimelineToolbar({
               width: `${videoDurationMs > 0 ? (currentTimeMs / videoDurationMs) * 100 : 0}%`,
             }}
           />
-          {/* Caption density dots */}
-          {captions.map((cap, i) => (
+          {/* Caption density dots (capped at 200) */}
+          {seekDots.map((leftPct, i) => (
             <div
               key={i}
               className="absolute top-1/2 -translate-y-1/2 rounded-full pointer-events-none"
               style={{
-                left: `${videoDurationMs > 0 ? (cap.startMs / videoDurationMs) * 100 : 0}%`,
+                left: `${leftPct}%`,
                 width: 2,
                 height: 2,
                 backgroundColor: "currentColor",

@@ -3,20 +3,25 @@ import {
   useCallback,
   useMemo,
   useState,
+  useRef as useReactRef,
   type MouseEvent as ReactMouseEvent,
 } from "react";
 import { useProjectStore } from "../../stores/useProjectStore";
 import { useAudioWaveform } from "../../hooks/useAudioWaveform";
 import { WaveformCanvas } from "../WaveformCanvas";
-import { useTimeline } from "./TimelineContext";
+import { useTimeline, usePlayhead } from "./TimelineContext";
 import { PageBlock } from "./PageBlock";
-import { computePageGroups, computeStaticPageGroups, msToShort } from "../../lib/pageGroups";
+import { msToShort } from "../../lib/pageGroups";
+import { usePageRanges } from "../../hooks/usePageRanges";
 import {
   MIN_PX_PER_MS,
   MAX_PX_PER_MS,
   TIME_RULER_HEIGHT,
   PAGE_BLOCK_HEIGHT,
 } from "./timeline-types";
+
+/* ── Viewport-based virtualization ────────────────────────────── */
+const OVERSCAN_PX = 400; // render this many extra pixels on each side
 
 interface CaptionTrackProps {
   onSplitCaption: (index: number) => void;
@@ -41,31 +46,64 @@ export function CaptionTrack({
   onMergeWithNext,
   onDeletePage,
 }: CaptionTrackProps) {
-  const { captions, videoSrc, settings, trimInMs, trimOutMs, videoDurationMs } =
-    useProjectStore();
+  const captions = useProjectStore((s) => s.captions);
+  const videoSrc = useProjectStore((s) => s.videoSrc);
+  const settings = useProjectStore((s) => s.settings);
+  const trimInMs = useProjectStore((s) => s.trimInMs);
+  const trimOutMs = useProjectStore((s) => s.trimOutMs);
+  const videoDurationMs = useProjectStore((s) => s.videoDurationMs);
   const {
     pxPerMs,
     setPxPerMs,
     dragState,
     setDragState,
     snapLineMs,
-    playheadLeft,
-    trackWidth,
     totalMs,
     scrollRef,
     trackRef,
     selectedPageIndex,
   } = useTimeline();
+  const { playheadLeft, trackWidth } = usePlayhead();
 
-  const pageCombineMs = settings.captionConfig.pageCombineMs;
   const captionMode = settings.captionMode;
-  const { pageRanges } = useMemo(
-    () =>
-      captionMode === "static"
-        ? computeStaticPageGroups(captions)
-        : computePageGroups(captions, pageCombineMs),
-    [captions, pageCombineMs, captionMode],
-  );
+  const { pageRanges } = usePageRanges();
+
+  // ── Viewport tracking for virtualization ────────────────────
+  const [viewport, setViewport] = useState({ left: 0, right: 2000 });
+  const rafRef = useReactRef<number>(0);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const update = () => {
+      setViewport({
+        left: el.scrollLeft - OVERSCAN_PX,
+        right: el.scrollLeft + el.clientWidth + OVERSCAN_PX,
+      });
+    };
+    update();
+    const onScroll = () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(update);
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    const obs = new ResizeObserver(update);
+    obs.observe(el);
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      obs.disconnect();
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [scrollRef]);
+
+  const visiblePageRanges = useMemo(() => {
+    if (pageRanges.length <= 50) return pageRanges; // skip filter for small sets
+    return pageRanges.filter((pr) => {
+      const left = pr.startMs * pxPerMs;
+      const right = pr.endMs * pxPerMs;
+      return right >= viewport.left && left <= viewport.right;
+    });
+  }, [pageRanges, pxPerMs, viewport]);
 
   // ── First-use hint bar ──────────────────────────────────────
   const [hintDismissed, setHintDismissed] = useState(() => {
@@ -92,9 +130,17 @@ export function CaptionTrack({
 
   const waveform = useAudioWaveform(videoSrc);
 
-  // Time markers
+  // Time markers (virtualized to viewport)
   const markerInterval = pxPerMs > 0.5 ? 1000 : pxPerMs > 0.1 ? 5000 : 10000;
-  const markerCount = Math.ceil(totalMs / markerInterval) + 1;
+  const visibleMarkers = useMemo(() => {
+    const firstIdx = Math.max(0, Math.floor(viewport.left / (markerInterval * pxPerMs)));
+    const lastIdx = Math.ceil(viewport.right / (markerInterval * pxPerMs));
+    const markers: number[] = [];
+    for (let i = firstIdx; i <= lastIdx && i * markerInterval <= totalMs; i++) {
+      markers.push(i * markerInterval);
+    }
+    return markers;
+  }, [markerInterval, pxPerMs, viewport, totalMs]);
 
   // ── Scroll wheel zoom + pan ──────────────────────────────────
   useEffect(() => {
@@ -226,15 +272,12 @@ export function CaptionTrack({
         onClick={handleTrackClick}
         onDoubleClick={handleTrackDoubleClick}
       >
-        {/* Time ruler */}
+        {/* Time ruler (virtualized) */}
         <div
           className="relative"
           style={{ height: TIME_RULER_HEIGHT, flexShrink: 0 }}
         >
-          {Array.from(
-            { length: markerCount },
-            (_, i) => i * markerInterval,
-          ).map((ms) => (
+          {visibleMarkers.map((ms) => (
             <div
               key={ms}
               className="absolute top-0 h-full border-l border-border/20"
@@ -247,9 +290,9 @@ export function CaptionTrack({
           ))}
         </div>
 
-        {/* Page blocks area */}
+        {/* Page blocks area (virtualized – only visible pages rendered) */}
         <div className="relative" style={{ height: PAGE_BLOCK_HEIGHT }}>
-          {pageRanges.map((pr) => (
+          {visiblePageRanges.map((pr) => (
             <PageBlock
               key={pr.pageIndex}
               page={pr}
@@ -283,20 +326,18 @@ export function CaptionTrack({
           </div>
         )}
 
-        {/* Time marker lines */}
-        {Array.from({ length: markerCount }, (_, i) => i * markerInterval).map(
-          (ms) => (
-            <div
-              key={`line-${ms}`}
-              className="absolute border-l border-border/10 pointer-events-none"
-              style={{
-                left: ms * pxPerMs,
-                top: TIME_RULER_HEIGHT,
-                bottom: 0,
-              }}
-            />
-          ),
-        )}
+        {/* Time marker lines (virtualized) */}
+        {visibleMarkers.map((ms) => (
+          <div
+            key={`line-${ms}`}
+            className="absolute border-l border-border/10 pointer-events-none"
+            style={{
+              left: ms * pxPerMs,
+              top: TIME_RULER_HEIGHT,
+              bottom: 0,
+            }}
+          />
+        ))}
 
         {/* Snap line */}
         {snapLineMs !== null && (
