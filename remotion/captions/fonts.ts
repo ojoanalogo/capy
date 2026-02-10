@@ -20,6 +20,10 @@ import { loadFont as loadTitilliumWeb } from "@remotion/google-fonts/TitilliumWe
 import { loadFont as loadAnton } from "@remotion/google-fonts/Anton";
 import { loadFont as loadRubikMonoOne } from "@remotion/google-fonts/RubikMonoOne";
 import { loadFont as loadFredoka } from "@remotion/google-fonts/Fredoka";
+import { loadFont as loadQuicksand } from "@remotion/google-fonts/Quicksand";
+import { loadFont as loadCaveat } from "@remotion/google-fonts/Caveat";
+import { loadFont as loadPlusJakartaSans } from "@remotion/google-fonts/PlusJakartaSans";
+import { loadFont as loadOutfit } from "@remotion/google-fonts/Outfit";
 
 const bangers = loadBangers();
 const inter = loadInter();
@@ -43,6 +47,10 @@ const titilliumWeb = loadTitilliumWeb();
 const anton = loadAnton();
 const rubikMonoOne = loadRubikMonoOne();
 const fredoka = loadFredoka();
+const quicksand = loadQuicksand();
+const caveat = loadCaveat();
+const plusJakartaSans = loadPlusJakartaSans();
+const outfit = loadOutfit();
 
 export const comicFont = bangers.fontFamily;
 export const waitForFont = bangers.waitUntilDone;
@@ -70,6 +78,10 @@ export const FONT_FAMILIES: Record<string, string> = {
   anton: anton.fontFamily,
   rubikMonoOne: rubikMonoOne.fontFamily,
   fredoka: fredoka.fontFamily,
+  quicksand: quicksand.fontFamily,
+  caveat: caveat.fontFamily,
+  plusJakartaSans: plusJakartaSans.fontFamily,
+  outfit: outfit.fontFamily,
 };
 
 export function getFontFamily(key: string): string {

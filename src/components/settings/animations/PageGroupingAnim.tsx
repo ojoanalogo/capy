@@ -1,162 +1,149 @@
 import { useCurrentFrame, interpolate, spring, useVideoConfig } from "remotion";
 import { ANIM_COLORS, MockWord } from "./shared";
 
+/**
+ * Animated illustration comparing Karaoke vs Static caption modes.
+ * Left side: words highlight one-by-one (karaoke).
+ * Right side: full phrase appears at once (static).
+ */
 export const PageGroupingAnim: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const words = [
-    { text: "Hello", x: 20 },
-    { text: "world", x: 75 },
-    { text: "this", x: 155 },
-    { text: "is", x: 195 },
-    { text: "a", x: 225 },
-    { text: "test", x: 260 },
-  ];
+  // ── Karaoke side: highlight cycles through words ──────────────
+  const words = ["Hello", "world", "this"];
+  const cycleLen = 30; // frames per word
+  const activeWordIdx = Math.floor((frame % (cycleLen * words.length)) / cycleLen);
 
-  // Gap threshold line sweeps back and forth
-  const thresholdX = interpolate(
-    frame,
-    [0, 45, 90],
-    [130, 210, 130],
+  const bounceIn = spring({ frame, fps, config: { damping: 12 } });
+
+  // ── Static side: phrase fades in/out ──────────────────────────
+  const phraseOpacity = interpolate(
+    frame % 90,
+    [0, 10, 70, 85, 89],
+    [0, 1, 1, 0, 0],
     { extrapolateRight: "clamp" },
   );
 
-  // Group A = words left of threshold, Group B = words right
-  const groupAOpacity = spring({ frame, fps, from: 0.3, to: 1, durationInFrames: 15 });
-  const groupBOpacity = spring({ frame: Math.max(0, frame - 10), fps, from: 0.3, to: 1, durationInFrames: 15 });
+  // Show second phrase briefly at end of cycle
+  const showPhrase2 = frame % 90 > 78;
 
   return (
     <svg viewBox="0 0 320 200" width="320" height="200">
       <rect width="320" height="200" fill={ANIM_COLORS.bg} />
 
-      {/* Timeline bar */}
-      <rect x="15" y="85" width="290" height="3" rx="1.5" fill={ANIM_COLORS.muted} opacity={0.2} />
+      {/* Divider */}
+      <line x1="160" y1="30" x2="160" y2="180" stroke={ANIM_COLORS.muted} strokeWidth={1} opacity={0.15} />
 
-      {/* Word dots on timeline */}
-      {words.map((w, i) => {
-        const isGroupA = w.x + 20 < thresholdX;
-        return (
-          <g key={i}>
-            <circle
-              cx={w.x + 20}
-              cy={86}
-              r={4}
-              fill={isGroupA ? ANIM_COLORS.primary : ANIM_COLORS.secondary}
-              opacity={isGroupA ? groupAOpacity : groupBOpacity}
-            />
-            <MockWord
-              x={w.x + 10}
-              y={75}
-              text={w.text}
-              fontSize={11}
-              fill={isGroupA ? ANIM_COLORS.primary : ANIM_COLORS.secondary}
-              opacity={isGroupA ? groupAOpacity : groupBOpacity}
-            />
-          </g>
-        );
-      })}
+      {/* ── Left: Karaoke ───────────────────────────────── */}
+      <MockWord x={55} y={28} text="Karaoke" fontSize={11} fill={ANIM_COLORS.primary} fontWeight="bold" opacity={0.8} />
 
-      {/* Gap threshold line */}
-      <line
-        x1={thresholdX}
-        y1={60}
-        x2={thresholdX}
-        y2={100}
-        stroke={ANIM_COLORS.accent}
-        strokeWidth={2}
-        strokeDasharray="4 2"
-        opacity={0.8}
-      />
-      <MockWord
-        x={thresholdX}
-        y={55}
-        text="gap"
-        fontSize={9}
-        fill={ANIM_COLORS.accent}
-        textAnchor="middle"
-        opacity={0.7}
-      />
+      {/* Caption box */}
+      <g opacity={bounceIn}>
+        <rect x={15} y={42} width={130} height={32} rx={6} fill={ANIM_COLORS.primary} opacity={0.1} />
+        <rect x={15} y={42} width={130} height={32} rx={6} fill="none" stroke={ANIM_COLORS.primary} strokeWidth={1} opacity={0.3} />
+      </g>
 
-      {/* Grouped caption boxes */}
+      {/* Words with active highlight */}
       {(() => {
-        const groupA = words.filter((w) => w.x + 20 < thresholdX);
-        const groupB = words.filter((w) => w.x + 20 >= thresholdX);
+        let cx = 24;
+        return words.map((w, i) => {
+          const x = cx;
+          cx += w.length * 7.5 + 10;
+          const isActive = i === activeWordIdx;
 
-        const bounceA = spring({ frame, fps, config: { damping: 12 } });
-        const bounceB = spring({ frame: Math.max(0, frame - 5), fps, config: { damping: 12 } });
+          const highlightScale = isActive
+            ? spring({
+                frame: frame % cycleLen,
+                fps,
+                config: { damping: 8, mass: 0.4 },
+                from: 1,
+                to: 1.15,
+                durationInFrames: 12,
+              })
+            : 1;
 
-        return (
-          <>
-            {groupA.length > 0 && (
-              <g opacity={bounceA}>
+          return (
+            <g key={i}>
+              {isActive && (
                 <rect
-                  x={12}
-                  y={115}
-                  width={groupA.length * 45 + 10}
-                  height={30}
-                  rx={6}
+                  x={x - 2}
+                  y={50}
+                  width={w.length * 7.5 + 4}
+                  height={16}
+                  rx={3}
                   fill={ANIM_COLORS.primary}
-                  opacity={0.15}
+                  opacity={0.25}
                 />
-                <rect
-                  x={12}
-                  y={115}
-                  width={groupA.length * 45 + 10}
-                  height={30}
-                  rx={6}
-                  fill="none"
-                  stroke={ANIM_COLORS.primary}
-                  strokeWidth={1.5}
-                  opacity={0.4}
-                />
-                <MockWord
-                  x={20}
-                  y={135}
-                  text={groupA.map((w) => w.text).join(" ")}
-                  fontSize={12}
-                  fill={ANIM_COLORS.text}
-                />
+              )}
+              <g transform={`translate(${x + (w.length * 7.5) / 2}, 62)`}>
+                <g transform={`scale(${highlightScale})`}>
+                  <MockWord
+                    x={0}
+                    y={0}
+                    text={w}
+                    fontSize={12}
+                    fill={isActive ? ANIM_COLORS.primary : ANIM_COLORS.text}
+                    opacity={isActive ? 1 : 0.35}
+                    textAnchor="middle"
+                  />
+                </g>
               </g>
-            )}
-            {groupB.length > 0 && (
-              <g opacity={bounceB}>
-                <rect
-                  x={groupA.length * 45 + 35}
-                  y={115}
-                  width={groupB.length * 40 + 10}
-                  height={30}
-                  rx={6}
-                  fill={ANIM_COLORS.secondary}
-                  opacity={0.15}
-                />
-                <rect
-                  x={groupA.length * 45 + 35}
-                  y={115}
-                  width={groupB.length * 40 + 10}
-                  height={30}
-                  rx={6}
-                  fill="none"
-                  stroke={ANIM_COLORS.secondary}
-                  strokeWidth={1.5}
-                  opacity={0.4}
-                />
-                <MockWord
-                  x={groupA.length * 45 + 43}
-                  y={135}
-                  text={groupB.map((w) => w.text).join(" ")}
-                  fontSize={12}
-                  fill={ANIM_COLORS.text}
-                />
-              </g>
-            )}
-          </>
-        );
+            </g>
+          );
+        });
       })()}
 
-      {/* Labels */}
-      <MockWord x={20} y={175} text="Page 1" fontSize={10} fill={ANIM_COLORS.primary} opacity={0.6} />
-      <MockWord x={160} y={175} text="Page 2" fontSize={10} fill={ANIM_COLORS.secondary} opacity={0.6} />
+      {/* Description */}
+      <MockWord x={22} y={96} text="Words highlight as spoken" fontSize={8} fill={ANIM_COLORS.muted} opacity={0.5} fontWeight="normal" />
+      <MockWord x={22} y={108} text="More control, more editing" fontSize={8} fill={ANIM_COLORS.muted} opacity={0.4} fontWeight="normal" />
+
+      {/* ── Right: Static ───────────────────────────────── */}
+      <MockWord x={215} y={28} text="Static" fontSize={11} fill="#60a5fa" fontWeight="bold" opacity={0.8} />
+
+      {/* Caption box */}
+      <g opacity={bounceIn}>
+        <rect x={175} y={42} width={130} height={32} rx={6} fill="#3b82f6" opacity={0.1} />
+        <rect x={175} y={42} width={130} height={32} rx={6} fill="none" stroke="#3b82f6" strokeWidth={1} opacity={0.3} />
+      </g>
+
+      {/* Full phrase, all same brightness */}
+      <g opacity={phraseOpacity}>
+        <MockWord x={187} y={62} text="Hello world this" fontSize={12} fill={ANIM_COLORS.text} opacity={1} />
+      </g>
+
+      {/* Second phrase peek */}
+      {showPhrase2 && (
+        <g opacity={interpolate(frame % 90, [78, 84, 89], [0, 0.9, 0], { extrapolateRight: "clamp" })}>
+          <MockWord x={193} y={62} text="is a test" fontSize={12} fill={ANIM_COLORS.text} opacity={1} />
+        </g>
+      )}
+
+      {/* Description */}
+      <MockWord x={182} y={96} text="Full phrase appears at once" fontSize={8} fill={ANIM_COLORS.muted} opacity={0.5} fontWeight="normal" />
+      <MockWord x={182} y={108} text="Quick setup, fewer edits" fontSize={8} fill={ANIM_COLORS.muted} opacity={0.4} fontWeight="normal" />
+
+      {/* ── Bottom labels ──────────────────────────────── */}
+
+      {/* Karaoke: timeline with word dots */}
+      <rect x={15} y={130} width={130} height={3} rx={1.5} fill={ANIM_COLORS.muted} opacity={0.15} />
+      {[28, 55, 82, 105, 118, 132].map((x, i) => (
+        <circle
+          key={i}
+          cx={x}
+          cy={131}
+          r={3}
+          fill={ANIM_COLORS.primary}
+          opacity={i <= activeWordIdx ? 0.9 : 0.2}
+        />
+      ))}
+      <MockWord x={40} y={155} text="6 words, 2 pages" fontSize={8} fill={ANIM_COLORS.primary} opacity={0.4} fontWeight="normal" />
+
+      {/* Static: timeline with phrase blocks */}
+      <rect x={175} y={130} width={130} height={3} rx={1.5} fill={ANIM_COLORS.muted} opacity={0.15} />
+      <rect x={178} y={125} width={55} height={12} rx={3} fill="#3b82f6" opacity={phraseOpacity * 0.3} />
+      <rect x={240} y={125} width={55} height={12} rx={3} fill="#3b82f6" opacity={showPhrase2 ? 0.3 : 0.1} />
+      <MockWord x={210} y={155} text="2 phrases, 2 pages" fontSize={8} fill="#60a5fa" opacity={0.4} fontWeight="normal" />
     </svg>
   );
 };

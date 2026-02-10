@@ -52,6 +52,7 @@ export const SimpleCaption: React.FC<SimpleCaptionProps> = ({
   const fontFamily = captionConfig?.fontFamily ?? "inter";
   const letterSpacing = captionConfig?.letterSpacing ?? 0;
   const lineHeight = captionConfig?.lineHeight ?? 1.4;
+  const fontWeight = captionConfig?.fontWeight ?? 500;
   const wordSpacing = captionConfig?.wordSpacing ?? 6;
   const animationStyle = captionConfig?.animationStyle ?? "fade";
   const animationIntensity = (captionConfig?.animationIntensity ?? 100) / 100;
@@ -157,7 +158,7 @@ export const SimpleCaption: React.FC<SimpleCaptionProps> = ({
               style={{
                 fontFamily: resolvedFontFamily,
                 fontSize,
-                fontWeight: isHighlighted && isActive ? 800 : 600,
+                fontWeight: isHighlighted && isActive ? Math.min(900, fontWeight + 200) : fontWeight,
                 color: isHighlighted && isActive ? highlightColor : textColor,
                 textShadow: `1px 1px ${shadowBlur}px ${shadowColor}, -1px -1px ${shadowBlur}px ${shadowColor}, 0 0 ${shadowBlur * 2}px ${shadowColor}80`,
                 textTransform: uppercase ? "uppercase" : "none",

@@ -1,4 +1,4 @@
-import type { CaptionConfig } from "../src/types/captions";
+import type { CaptionConfig, CaptionMode } from "../src/types/captions";
 
 export interface CompositionProps extends Record<string, unknown> {
   videoFile: string;
@@ -16,6 +16,8 @@ export interface CompositionProps extends Record<string, unknown> {
   highlightWords?: string[];
   /** Unified caption config — used by editor preview */
   captionConfig?: CaptionConfig;
+  /** Caption mode — "karaoke" (word-level highlight) or "static" (whole phrase) */
+  captionMode?: CaptionMode;
   // Legacy props — used by CLI render path
   comicConfig?: { colors?: string[]; fontSize?: number };
   simpleConfig?: {

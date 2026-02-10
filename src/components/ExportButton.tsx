@@ -40,6 +40,8 @@ export function ExportButton() {
         videoFile,
         captionStyle: settings.captionStyle,
         highlightWords: settings.highlightWords,
+        captionConfig: settings.captionConfig,
+        captionMode: settings.captionMode,
         ...(settings.captionStyle === "comic"
           ? { comicConfig: settings.comicConfig }
           : { simpleConfig: settings.simpleConfig }),

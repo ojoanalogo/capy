@@ -118,7 +118,7 @@ export function VideoDropzone() {
 
         setVideoFile(filename, videoSrc);
         setCaptions(captions, captionPath);
-        setPipelineStage("ready");
+        setPipelineStage("choosing-mode");
       } catch (err) {
         console.error("Pipeline failed:", err);
         setProgress({

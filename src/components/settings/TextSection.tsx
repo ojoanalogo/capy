@@ -6,28 +6,32 @@ import { FeatureHelpModal } from "./FeatureHelpModal";
 import { TextAnim } from "./animations/TextAnim";
 
 const FONT_OPTIONS = [
-  { value: "comic", label: "Bangers" },
   { value: "inter", label: "Inter" },
+  { value: "plusJakartaSans", label: "Plus Jakarta Sans" },
+  { value: "outfit", label: "Outfit" },
   { value: "montserrat", label: "Montserrat" },
   { value: "poppins", label: "Poppins" },
-  { value: "oswald", label: "Oswald" },
+  { value: "quicksand", label: "Quicksand" },
+  { value: "lexend", label: "Lexend" },
+  { value: "dmSans", label: "DM Sans" },
   { value: "roboto", label: "Roboto" },
-  { value: "raleway", label: "Raleway" },
   { value: "lato", label: "Lato" },
   { value: "nunito", label: "Nunito" },
-  { value: "bebasNeue", label: "Bebas Neue" },
-  { value: "alfaSlabOne", label: "Alfa Slab One" },
-  { value: "permanentMarker", label: "Permanent Marker" },
   { value: "rubik", label: "Rubik" },
+  { value: "raleway", label: "Raleway" },
+  { value: "oswald", label: "Oswald" },
   { value: "spaceGrotesk", label: "Space Grotesk" },
-  { value: "dmSans", label: "DM Sans" },
   { value: "archivo", label: "Archivo" },
   { value: "syne", label: "Syne" },
-  { value: "lexend", label: "Lexend" },
   { value: "titilliumWeb", label: "Titillium Web" },
+  { value: "fredoka", label: "Fredoka" },
+  { value: "caveat", label: "Caveat" },
+  { value: "comic", label: "Bangers" },
+  { value: "permanentMarker", label: "Permanent Marker" },
+  { value: "bebasNeue", label: "Bebas Neue" },
+  { value: "alfaSlabOne", label: "Alfa Slab One" },
   { value: "anton", label: "Anton" },
   { value: "rubikMonoOne", label: "Rubik Mono One" },
-  { value: "fredoka", label: "Fredoka" },
 ];
 
 export function TextSection() {
@@ -57,6 +61,15 @@ export function TextSection() {
         min={30}
         max={90}
         onChange={(v) => updateCaptionConfig({ fontSize: v })}
+      />
+
+      <SliderRow
+        label="Weight"
+        value={config.fontWeight}
+        display={config.fontWeight}
+        min={300}
+        max={900}
+        onChange={(v) => updateCaptionConfig({ fontWeight: Math.round(v / 100) * 100 })}
       />
 
       <Row label="Color">

@@ -11,10 +11,11 @@ import {
 import { Video } from "@remotion/media";
 import { createTikTokStyleCaptions } from "@remotion/captions";
 import type { Caption } from "@remotion/captions";
-import type { CaptionConfig } from "../../src/types/captions";
+import type { CaptionConfig, CaptionMode } from "../../src/types/captions";
 import { ComicCaption } from "./ComicCaption";
 import { SimpleCaption } from "./SimpleCaption";
 import { DitheringPattern } from "./DitheringPattern";
+import { captionsToSyntheticPages } from "./CaptionsOverlay";
 import { PAGE_COMBINE_MS } from "../../src/lib/constants";
 
 export interface CaptionedVideoProps extends Record<string, unknown> {
@@ -24,6 +25,7 @@ export interface CaptionedVideoProps extends Record<string, unknown> {
   captionStyle?: "comic" | "simple";
   highlightWords?: string[];
   captionConfig?: CaptionConfig;
+  captionMode?: CaptionMode;
   comicConfig?: { colors?: string[]; fontSize?: number };
   simpleConfig?: {
     fontSize?: number;
@@ -46,6 +48,7 @@ export const CaptionedVideo: React.FC<CaptionedVideoProps> = ({
   captionStyle = "comic",
   highlightWords = [],
   captionConfig,
+  captionMode = "karaoke",
   comicConfig,
   simpleConfig,
 }) => {
@@ -91,13 +94,15 @@ export const CaptionedVideo: React.FC<CaptionedVideoProps> = ({
 
   const pageCombineMs = captionConfig?.pageCombineMs ?? PAGE_COMBINE_MS;
 
-  const { pages } = useMemo(
+  const pages = useMemo(
     () =>
-      createTikTokStyleCaptions({
-        captions,
-        combineTokensWithinMilliseconds: pageCombineMs,
-      }),
-    [captions, pageCombineMs],
+      captionMode === "static"
+        ? captionsToSyntheticPages(captions)
+        : createTikTokStyleCaptions({
+            captions,
+            combineTokensWithinMilliseconds: pageCombineMs,
+          }).pages,
+    [captions, pageCombineMs, captionMode],
   );
 
   // Determine effective style

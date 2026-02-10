@@ -74,3 +74,28 @@ export function computePageGroups(
 
   return { captionToPage: map, pageRanges: ranges };
 }
+
+/**
+ * Static mode: each caption maps 1:1 to its own page (no word-level grouping).
+ */
+export function computeStaticPageGroups(
+  captions: Caption[],
+): { captionToPage: Map<number, number>; pageRanges: PageRange[] } {
+  const map = new Map<number, number>();
+  const ranges: PageRange[] = [];
+
+  for (let i = 0; i < captions.length; i++) {
+    const c = captions[i]!;
+    map.set(i, i);
+    ranges.push({
+      pageIndex: i,
+      startMs: c.startMs,
+      endMs: c.endMs,
+      firstCaptionIdx: i,
+      lastCaptionIdx: i,
+      color: PAGE_COLORS[i % PAGE_COLORS.length]!,
+    });
+  }
+
+  return { captionToPage: map, pageRanges: ranges };
+}

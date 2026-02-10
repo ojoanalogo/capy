@@ -3,12 +3,14 @@ import { temporal } from "zundo";
 import type {
   Caption,
   CaptionConfig,
+  CaptionMode,
   CaptionStyle,
   PipelineStage,
   PipelineProgress,
   ProjectSettings,
 } from "../types/captions";
-import { getPreset, COMIC_PRESET } from "../lib/presets";
+import { getPreset, SIMPLE_PRESET } from "../lib/presets";
+import { computePageGroups } from "../lib/pageGroups";
 
 interface ProjectState {
   // Video
@@ -17,6 +19,7 @@ interface ProjectState {
 
   // Captions
   captions: Caption[];
+  karaokeCaptions: Caption[] | null;
   captionPath: string | null;
 
   // Pipeline
@@ -52,16 +55,20 @@ interface ProjectState {
   applyPreset: (name: CaptionStyle) => void;
   setTrimIn: (ms: number | null) => void;
   setTrimOut: (ms: number | null) => void;
+  convertToStatic: () => void;
+  restoreKaraoke: () => void;
   setExportPath: (path: string | null) => void;
   reset: () => void;
 }
 
 const DEFAULT_SETTINGS: ProjectSettings = {
-  activePreset: "comic",
-  captionConfig: { ...COMIC_PRESET },
+  activePreset: "simple",
+  captionConfig: { ...SIMPLE_PRESET },
   highlightWords: [],
+  // Caption mode
+  captionMode: "karaoke",
   // Legacy compat
-  captionStyle: "comic",
+  captionStyle: "simple",
   comicConfig: {
     colors: ["#FFD700", "#3B82F6", "#EF4444", "#22C55E"],
     fontSize: 62,
@@ -91,6 +98,7 @@ export const useProjectStore = create<ProjectState>()(
       videoFile: null,
       videoSrc: null,
       captions: [],
+      karaokeCaptions: null,
       captionPath: null,
       pipelineStage: "idle",
       progress: INITIAL_PROGRESS,
@@ -103,7 +111,13 @@ export const useProjectStore = create<ProjectState>()(
 
       setVideoFile: (file, src) => set({ videoFile: file, videoSrc: src }),
 
-      setCaptions: (captions, path) => set({ captions, captionPath: path }),
+      setCaptions: (captions, path) =>
+        set((state) => ({
+          captions,
+          karaokeCaptions: null,
+          captionPath: path,
+          settings: { ...state.settings, captionMode: "karaoke" as CaptionMode },
+        })),
 
       updateCaption: (index, partial) =>
         set((state) => {
@@ -125,6 +139,60 @@ export const useProjectStore = create<ProjectState>()(
           const captions = [...state.captions];
           captions.splice(index, 0, caption);
           return { captions };
+        }),
+
+      convertToStatic: () =>
+        set((state) => {
+          // Save word-level captions so we can restore them later
+          const savedKaraoke = state.karaokeCaptions ?? [...state.captions];
+
+          const { pageRanges } = computePageGroups(
+            state.captions,
+            state.settings.captionConfig.pageCombineMs,
+          );
+          const staticCaptions: Caption[] = pageRanges.map((range) => {
+            const words = state.captions.slice(
+              range.firstCaptionIdx,
+              range.lastCaptionIdx + 1,
+            );
+            const text = words.map((w) => w.text).join("").trim();
+            return {
+              text,
+              startMs: range.startMs,
+              endMs: range.endMs,
+              timestampMs: range.startMs,
+              confidence: 1,
+            };
+          });
+          return {
+            captions: staticCaptions,
+            karaokeCaptions: savedKaraoke,
+            settings: {
+              ...state.settings,
+              captionMode: "static" as CaptionMode,
+            },
+          };
+        }),
+
+      restoreKaraoke: () =>
+        set((state) => {
+          if (!state.karaokeCaptions) {
+            // No saved word-level captions — just switch the flag
+            return {
+              settings: {
+                ...state.settings,
+                captionMode: "karaoke" as CaptionMode,
+              },
+            };
+          }
+          return {
+            captions: state.karaokeCaptions,
+            karaokeCaptions: null,
+            settings: {
+              ...state.settings,
+              captionMode: "karaoke" as CaptionMode,
+            },
+          };
         }),
 
       setPipelineStage: (stage) => set({ pipelineStage: stage }),
@@ -168,6 +236,7 @@ export const useProjectStore = create<ProjectState>()(
           videoFile: null,
           videoSrc: null,
           captions: [],
+          karaokeCaptions: null,
           captionPath: null,
           pipelineStage: "idle",
           progress: INITIAL_PROGRESS,
@@ -184,6 +253,7 @@ export const useProjectStore = create<ProjectState>()(
       // Only track captions + settings changes, skip transient state
       partialize: (state) => ({
         captions: state.captions,
+        karaokeCaptions: state.karaokeCaptions,
         settings: state.settings,
         trimInMs: state.trimInMs,
         trimOutMs: state.trimOutMs,

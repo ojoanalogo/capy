@@ -1,15 +1,19 @@
 import { useCallback, useMemo } from "react";
 import { useProjectStore } from "../../stores/useProjectStore";
-import { computePageGroups } from "../../lib/pageGroups";
+import { computePageGroups, computeStaticPageGroups } from "../../lib/pageGroups";
 import { toast } from "sonner";
 
 export function usePageActions() {
   const { captions, settings, updateCaption, deleteCaption } = useProjectStore();
   const pageCombineMs = settings.captionConfig.pageCombineMs;
+  const captionMode = settings.captionMode;
 
   const { pageRanges } = useMemo(
-    () => computePageGroups(captions, pageCombineMs),
-    [captions, pageCombineMs],
+    () =>
+      captionMode === "static"
+        ? computeStaticPageGroups(captions)
+        : computePageGroups(captions, pageCombineMs),
+    [captions, pageCombineMs, captionMode],
   );
 
   /**
@@ -65,6 +69,7 @@ export function usePageActions() {
   /**
    * Merge this page with the next by reducing the gap between
    * the last caption of this page and the first caption of the next page.
+   * In static mode: join the two caption texts and delete the second caption.
    */
   const mergeWithNext = useCallback(
     (pageIndex: number) => {
@@ -72,6 +77,27 @@ export function usePageActions() {
       const nextPage = pageRanges[pageIndex + 1];
       if (!page || !nextPage) {
         toast.error("No next page to merge with");
+        return;
+      }
+
+      if (captionMode === "static") {
+        // Static mode: join two phrases into one caption
+        const cap = captions[page.firstCaptionIdx];
+        const nextCap = captions[nextPage.firstCaptionIdx];
+        if (!cap || !nextCap) return;
+
+        updateCaption(page.firstCaptionIdx, {
+          text: cap.text + " " + nextCap.text,
+          endMs: nextCap.endMs,
+        });
+        deleteCaption(nextPage.firstCaptionIdx);
+
+        toast("Captions merged", {
+          action: {
+            label: "Undo",
+            onClick: () => useProjectStore.temporal.getState().undo(),
+          },
+        });
         return;
       }
 
@@ -103,7 +129,7 @@ export function usePageActions() {
         },
       });
     },
-    [pageRanges, captions, pageCombineMs, updateCaption],
+    [pageRanges, captions, pageCombineMs, captionMode, updateCaption, deleteCaption],
   );
 
   const deletePage = useCallback(

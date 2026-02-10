@@ -249,6 +249,7 @@ export function RemotionPreview() {
       captionStyle: settings.captionStyle,
       highlightWords: settings.highlightWords,
       captionConfig: settings.captionConfig,
+      captionMode: settings.captionMode,
       comicConfig: settings.comicConfig,
       simpleConfig: settings.simpleConfig,
     }),

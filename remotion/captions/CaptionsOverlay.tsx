@@ -1,18 +1,37 @@
 import React, { useMemo } from "react";
 import { AbsoluteFill, Sequence, useVideoConfig } from "remotion";
 import { createTikTokStyleCaptions } from "@remotion/captions";
-import type { Caption } from "@remotion/captions";
-import type { CaptionConfig } from "../../src/types/captions";
+import type { Caption, TikTokPage } from "@remotion/captions";
+import type { CaptionConfig, CaptionMode } from "../../src/types/captions";
 import { ComicCaption } from "./ComicCaption";
 import { SimpleCaption } from "./SimpleCaption";
 import { DitheringPattern } from "./DitheringPattern";
 import { PAGE_COMBINE_MS } from "../../src/lib/constants";
+
+/** Convert static-mode captions into synthetic TikTokPages.
+ *  Splits each phrase into per-word tokens (all sharing the same timing)
+ *  so highlight-word matching works on individual words. */
+export function captionsToSyntheticPages(captions: Caption[]): TikTokPage[] {
+  return captions.map((c) => {
+    const words = c.text.split(/(\s+)/);
+    const tokens = words
+      .filter((w) => w.trim().length > 0)
+      .map((w) => ({ text: w, fromMs: c.startMs, toMs: c.endMs }));
+    return {
+      text: c.text,
+      startMs: c.startMs,
+      durationMs: c.endMs - c.startMs,
+      tokens: tokens.length > 0 ? tokens : [{ text: c.text, fromMs: c.startMs, toMs: c.endMs }],
+    };
+  });
+}
 
 export interface CaptionsOverlayProps extends Record<string, unknown> {
   captionsData: Caption[];
   captionStyle?: "comic" | "simple";
   highlightWords?: string[];
   captionConfig?: CaptionConfig;
+  captionMode?: CaptionMode;
   comicConfig?: { colors?: string[]; fontSize?: number };
   simpleConfig?: {
     fontSize?: number;
@@ -36,6 +55,7 @@ export const CaptionsOverlay: React.FC<CaptionsOverlayProps> = ({
   captionStyle = "comic",
   highlightWords = [],
   captionConfig,
+  captionMode = "karaoke",
   comicConfig,
   simpleConfig,
 }) => {
@@ -43,13 +63,15 @@ export const CaptionsOverlay: React.FC<CaptionsOverlayProps> = ({
 
   const pageCombineMs = captionConfig?.pageCombineMs ?? PAGE_COMBINE_MS;
 
-  const { pages } = useMemo(
+  const pages = useMemo(
     () =>
-      createTikTokStyleCaptions({
-        captions: captionsData,
-        combineTokensWithinMilliseconds: pageCombineMs,
-      }),
-    [captionsData, pageCombineMs],
+      captionMode === "static"
+        ? captionsToSyntheticPages(captionsData)
+        : createTikTokStyleCaptions({
+            captions: captionsData,
+            combineTokensWithinMilliseconds: pageCombineMs,
+          }).pages,
+    [captionsData, pageCombineMs, captionMode],
   );
 
   // Determine effective style from captionConfig or legacy prop

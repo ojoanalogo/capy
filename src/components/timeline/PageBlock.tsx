@@ -2,6 +2,7 @@ import { useCallback, useRef, type MouseEvent as ReactMouseEvent } from "react";
 import { useProjectStore } from "../../stores/useProjectStore";
 import { useTimeline } from "./TimelineContext";
 import type { PageRange } from "../../lib/pageGroups";
+import type { CaptionMode } from "../../types/captions";
 import { msToShort } from "../../lib/pageGroups";
 import { Pencil, Scissors, Trash2, X, Link, Plus } from "lucide-react";
 import {
@@ -39,6 +40,7 @@ function getCursorForPosition(
 interface PageBlockProps {
   page: PageRange;
   totalPages: number;
+  captionMode: CaptionMode;
   onSplitCaption: (index: number) => void;
   onDeleteSelected: () => void;
   onStartEdit: (index: number) => void;
@@ -54,6 +56,7 @@ interface PageBlockProps {
 export function PageBlock({
   page,
   totalPages,
+  captionMode,
   onSplitCaption,
   onDeleteSelected,
   onStartEdit,
@@ -135,9 +138,20 @@ export function PageBlock({
     [page.firstCaptionIdx, page.lastCaptionIdx, setDragState],
   );
 
+  const isStatic = captionMode === "static";
+
   const handleCaptionMouseDown = useCallback(
     (e: ReactMouseEvent, index: number, captionEl: HTMLElement) => {
       e.stopPropagation();
+
+      // In static mode, only select — no drag/resize on individual caption bars
+      if (isStatic) {
+        selectCaption(index, e);
+        setSelectedPageIndex(page.pageIndex);
+        setIsAutoFollowing(false);
+        return;
+      }
+
       const cursor = getCursorForPosition(e, captionEl);
       const cap = captions[index]!;
 
@@ -162,6 +176,7 @@ export function PageBlock({
       setIsAutoFollowing(false);
     },
     [
+      isStatic,
       captions,
       pxPerMs,
       selectCaption,
@@ -421,7 +436,7 @@ export function PageBlock({
                               ? `1px solid ${page.color}44`
                               : "none",
                           outlineOffset: 0,
-                          cursor: dragState ? "grabbing" : "default",
+                          cursor: isStatic ? "default" : dragState ? "grabbing" : "default",
                           transition: "background-color 150ms",
                         }}
                         onClick={(e) => {
@@ -437,7 +452,7 @@ export function PageBlock({
                           handleCaptionMouseDown(e, i, e.currentTarget)
                         }
                         onMouseMove={(e) => {
-                          if (dragState) return;
+                          if (dragState || isStatic) return;
                           const c = getCursorForPosition(e, e.currentTarget);
                           e.currentTarget.style.cursor =
                             c === "grab" ? "grab" : c;
@@ -445,7 +460,8 @@ export function PageBlock({
                         onMouseEnter={() => setHoveredIndex(i)}
                         onMouseLeave={() => setHoveredIndex(null)}
                       >
-                        {/* Left resize handle */}
+                        {/* Left resize handle (karaoke only) */}
+                        {!isStatic && (
                         <div
                           className="absolute left-0 top-0 bottom-0 cursor-w-resize flex items-center justify-center"
                           style={{ width: CAP_HANDLE_W }}
@@ -462,6 +478,7 @@ export function PageBlock({
                             }}
                           />
                         </div>
+                        )}
 
                         {/* Caption text */}
                         {isEditing ? (
@@ -483,7 +500,8 @@ export function PageBlock({
                           </span>
                         )}
 
-                        {/* Right resize handle */}
+                        {/* Right resize handle (karaoke only) */}
+                        {!isStatic && (
                         <div
                           className="absolute right-0 top-0 bottom-0 cursor-e-resize flex items-center justify-center"
                           style={{ width: CAP_HANDLE_W }}
@@ -500,6 +518,7 @@ export function PageBlock({
                             }}
                           />
                         </div>
+                        )}
 
                         {/* Split preview line */}
                         {showSplit && (

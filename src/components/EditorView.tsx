@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { useProjectStore } from "../stores/useProjectStore";
+import { GlossaryDialog } from "./glossary/GlossaryDialog";
 
 function usePersisted<T>(
   key: string,
@@ -105,6 +106,7 @@ export function EditorView() {
           </div>
         </div>
         <div className="flex items-center gap-1">
+          <GlossaryDialog />
           <Button
             variant="ghost"
             size="icon"

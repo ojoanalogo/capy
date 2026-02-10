@@ -11,12 +11,15 @@ export type CaptionStyle =
   | "simple"
   | "neon"
   | "minimal"
-  | "bold"
   | "karaoke"
   | "retro"
   | "typewriter"
   | "gradient"
-  | "outline";
+  | "outline"
+  | "broadcast"
+  | "handwritten"
+  | "soft"
+  | "clean";
 export type AnimationStyle = "pop" | "slam" | "shake" | "swipe" | "fade" | "none";
 export type VerticalAlign = "top" | "center" | "bottom";
 export type HorizontalAlign = "left" | "center" | "right";
@@ -46,6 +49,7 @@ export interface CaptionConfig {
   uppercase: boolean;
   letterSpacing: number;
   lineHeight: number;
+  fontWeight: number;
   wordSpacing: number;
   pageCombineMs: number;
 }
@@ -70,6 +74,8 @@ export interface ProjectSettings {
   captionStyle: CaptionStyle;
   comicConfig: ComicConfig;
   simpleConfig: SimpleConfig;
+  // Caption mode
+  captionMode: CaptionMode;
   // Whisper settings
   whisperModel: string;
   language: string;
@@ -79,10 +85,13 @@ export interface ProjectSettings {
   splitOnWord: boolean;
 }
 
+export type CaptionMode = "karaoke" | "static";
+
 export type PipelineStage =
   | "idle"
   | "processing"
   | "transcribing"
+  | "choosing-mode"
   | "ready"
   | "exporting";
 

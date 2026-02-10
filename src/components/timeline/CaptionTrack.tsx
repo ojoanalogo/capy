@@ -10,7 +10,7 @@ import { useAudioWaveform } from "../../hooks/useAudioWaveform";
 import { WaveformCanvas } from "../WaveformCanvas";
 import { useTimeline } from "./TimelineContext";
 import { PageBlock } from "./PageBlock";
-import { computePageGroups, msToShort } from "../../lib/pageGroups";
+import { computePageGroups, computeStaticPageGroups, msToShort } from "../../lib/pageGroups";
 import {
   MIN_PX_PER_MS,
   MAX_PX_PER_MS,
@@ -58,9 +58,13 @@ export function CaptionTrack({
   } = useTimeline();
 
   const pageCombineMs = settings.captionConfig.pageCombineMs;
+  const captionMode = settings.captionMode;
   const { pageRanges } = useMemo(
-    () => computePageGroups(captions, pageCombineMs),
-    [captions, pageCombineMs],
+    () =>
+      captionMode === "static"
+        ? computeStaticPageGroups(captions)
+        : computePageGroups(captions, pageCombineMs),
+    [captions, pageCombineMs, captionMode],
   );
 
   // ── First-use hint bar ──────────────────────────────────────
@@ -250,6 +254,7 @@ export function CaptionTrack({
               key={pr.pageIndex}
               page={pr}
               totalPages={pageRanges.length}
+              captionMode={captionMode}
               onSplitCaption={onSplitCaption}
               onDeleteSelected={onDeleteSelected}
               onStartEdit={onStartEdit}
